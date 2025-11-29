@@ -53,12 +53,13 @@ def generate_protobuf_files(proto_file, options_file=None, output_dir=None, nano
     # Always generate protobuf files
     print(f"Generating protobuf files from {proto_basename}...")
 
-    # Use the `nanopb_generator` console script that pip installs alongside `nanopb`.
-    # This lives in the same virtualenv/bin directory as sys.executable.
-    nanopb_gen = os.path.join(os.path.dirname(sys.executable), "nanopb_generator")
-
+    # Note: nanopb_generator should be in the PATH, otherwise this will fail.
+    # Tyically, pip handles this by adding the virtualenv/bin directory to the PATH.
+    # If you have made pip install to an alternate directory, you may need to add the directory to the PATH.
+    # For example, if you have made pip install to a directory called "myenv", you may need to add the directory to the PATH.
+    # export PATH=$PATH:/path/to/myenv/bin
     cmd = [
-        nanopb_gen,
+        "nanopb_generator",
         "-D",
         output_dir,
         "-I",
