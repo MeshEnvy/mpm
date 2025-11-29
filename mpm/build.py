@@ -26,7 +26,7 @@ def init_plugins(env, projenv=None):
     # Use projenv if provided, otherwise fall back to env
     include_env = projenv if projenv is not None else env
 
-    env.Append(SRC_FILTER=[f"-<{plugins_dir_rel}/*>"])
+    # env.Append(SRC_FILTER=[f"-<{plugins_dir_rel}/*>"])
 
     print(f"MPM: Scanning plugins in {plugins_dir_rel}...")
 
@@ -41,7 +41,7 @@ def init_plugins(env, projenv=None):
 
         # Update SRC_FILTER
         rel_src_path = os.path.relpath(src_path, project_dir)
-        env.Append(SRC_FILTER=[f"+<{rel_src_path}/*>"])
+        env.Append(SRC_FILTER=[f"+<../{rel_src_path}/*>"])
 
         # Add plugin src to include paths (use projenv for compiler include paths)
         include_env.Append(CPPPATH=[src_path])
@@ -52,6 +52,7 @@ def init_plugins(env, projenv=None):
             proto_basename = os.path.basename(proto_file)
             print(f"MPM: Registered proto {proto_basename} for {plugin_name}")
 
+    print(env["SRC_FILTER"])
     # Generate protobuf files for all plugins
     generate_all_protobuf_files(plugins, verbose=True)
 

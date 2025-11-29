@@ -53,11 +53,12 @@ def generate_protobuf_files(proto_file, options_file=None, output_dir=None, nano
     # Always generate protobuf files
     print(f"Generating protobuf files from {proto_basename}...")
 
-    # Use nanopb generator directly (installed via requirements.txt)
+    # Use the `nanopb_generator` console script that pip installs alongside `nanopb`.
+    # This lives in the same virtualenv/bin directory as sys.executable.
+    nanopb_gen = os.path.join(os.path.dirname(sys.executable), "nanopb_generator")
+
     cmd = [
-        sys.executable,
-        "-m",
-        "nanopb.generator",
+        nanopb_gen,
         "-D",
         output_dir,
         "-I",
