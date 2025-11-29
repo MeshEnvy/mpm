@@ -52,7 +52,8 @@ def init_plugins(env, projenv=None):
             proto_basename = os.path.basename(proto_file)
             print(f"MPM: Registered proto {proto_basename} for {plugin_name}")
 
-    print(env["SRC_FILTER"])
+    # print("MPM: SRC_FILTER: ", env["SRC_FILTER"])
+
     # Generate protobuf files for all plugins
     generate_all_protobuf_files(plugins, verbose=True)
 
