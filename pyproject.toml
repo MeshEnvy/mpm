@@ -1,0 +1,26 @@
+[project]
+name = "mesh-plugin-manager"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Ben Allfree",email = "ben@meshenvy.org"}
+]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "resolvelib>=1.0.0",
+    "semver>=3.0.0",
+    "requests>=2.31.0",
+    "nanopb>=0.4.9",
+    "grpcio-tools>=1.0.0",
+]
+
+[project.scripts]
+mpm = 'mesh_plugin_manager.cli:main'
+
+[tool.poetry]
+packages = [{include = "mesh_plugin_manager", from = "src"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

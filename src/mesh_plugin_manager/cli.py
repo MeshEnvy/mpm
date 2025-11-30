@@ -4,12 +4,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from mpm.build_utils import find_project_dir, scan_plugins
-from mpm.installer import PluginInstaller
-from mpm.manifest import ManifestManager
-from mpm.proto import generate_all_protobuf_files
-from mpm.registry import RegistryClient
-from mpm.resolver import DependencyResolver
+from mesh_plugin_manager.build_utils import find_project_dir, scan_plugins
+from mesh_plugin_manager.installer import PluginInstaller
+from mesh_plugin_manager.manifest import ManifestManager
+from mesh_plugin_manager.proto import generate_all_protobuf_files
+from mesh_plugin_manager.registry import RegistryClient
+from mesh_plugin_manager.resolver import DependencyResolver
 
 
 def cmd_list(args):

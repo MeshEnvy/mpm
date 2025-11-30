@@ -13,7 +13,7 @@ A lightweight package manager for Meshtastic plugins with dependency resolution,
 ## Installation
 
 ```bash
-pip install -e .
+pip install mesh-plugin-manager
 ```
 
 ## Usage
@@ -37,8 +37,4 @@ mpm remove <slug>
 # Generate protobuf files for all plugins
 mpm proto
 ```
-
-## Development
-
-This package is used by the Meshtastic firmware build system to manage plugins during compilation.
 
