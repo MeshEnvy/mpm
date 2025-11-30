@@ -8,8 +8,8 @@ try:
 except:
     IS_PLATFORMIO = False
 
-from mpm.build_utils import find_project_dir, scan_plugins
-from mpm.proto import generate_all_protobuf_files
+from mesh_plugin_manager.build_utils import find_project_dir, scan_plugins
+from mesh_plugin_manager.proto import generate_all_protobuf_files
 
 
 def init_plugins(env, projenv=None):
