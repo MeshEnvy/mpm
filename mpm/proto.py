@@ -72,7 +72,11 @@ def generate_protobuf_files(proto_file, options_file=None, output_dir=None, nano
     try:
         # Run in proto directory so nanopb can find the .options file
         # We use cwd argument instead of os.chdir to avoid thread-safety issues in SCons
-        subprocess.run(cmd, cwd=proto_dir, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=proto_dir, check=True, capture_output=True, text=True)
+        # if result.stdout:
+        #     print(result.stdout)
+        # if result.stderr:
+        #     print(result.stderr)
         return True
 
     except subprocess.CalledProcessError as e:
