@@ -1,23 +1,9 @@
-diff --git a/.gitignore b/.gitignore
-index cc742c6c1..e3fa69055 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -41,3 +41,8 @@ src/mesh/raspihttp/private_key.pem
- 
- # Ignore logo (set at build time with platformio-custom.py)
- data/boot/logo.*
-+
-+# Ignore 3rd party plugins
-+plugins/*
-+!plugins/README.md
-+!plugins/sample-plugin
-\ No newline at end of file
 diff --git a/bin/mpm_generate.py b/bin/mpm_generate.py
 new file mode 100644
-index 000000000..4bef34196
+index 000000000..4f241bec6
 --- /dev/null
 +++ b/bin/mpm_generate.py
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,69 @@
 +#!/usr/bin/env python3
 +"""
 +PlatformIO pre-build script to generate protobuf files and add plugin include paths.
@@ -54,26 +40,39 @@ index 000000000..4bef34196
 +            print(f"MPM: Added include path {rel_path}")
 +
 +
-+
-+print(env["SRC_FILTER"])
-+print(env["BUILD_FLAGS"])
-+
-+# Run mpm generate
++# Check if mpm command is available
++mpm_available = False
 +try:
 +    result = subprocess.run(
-+        ["mpm", "generate"],
-+        cwd=project_dir,
++        ["mpm", "version"],
 +        capture_output=True,
 +        text=True,
 +    )
-+    if result.returncode != 0:
-+        print(f"Warning: mpm generate failed: {result.stderr}", file=sys.stderr)
-+    elif result.stdout:
-+        print(result.stdout)
-+except FileNotFoundError:
-+    print("Warning: mpm command not found. Skipping protobuf generation.", file=sys.stderr)
-+except Exception as e:
-+    print(f"Warning: Failed to run mpm generate: {e}", file=sys.stderr)
++    if result.returncode == 0:
++        mpm_available = True
++except (FileNotFoundError, subprocess.SubprocessError):
++    pass
++
++if not mpm_available:
++    print("Warning: mpm command not found. Run 'pip install mesh-plugin-manager' to enable plugin support.", file=sys.stderr)
++
++# Run mpm generate if available
++if mpm_available:
++    try:
++        result = subprocess.run(
++            ["mpm", "generate"],
++            cwd=project_dir,
++            capture_output=True,
++            text=True,
++        )
++        if result.returncode != 0:
++            print(f"Warning: mpm generate failed: {result.stderr}", file=sys.stderr)
++        elif result.stdout:
++            print(result.stdout)
++    except Exception as e:
++        print(f"Warning: Failed to run mpm generate: {e}", file=sys.stderr)
++else:
++    print("Skipping protobuf generation (mpm not available).", file=sys.stderr)
 diff --git a/platformio.ini b/platformio.ini
 index 1363a63fc..294d758f4 100644
 --- a/platformio.ini
@@ -91,13 +90,25 @@ index 1363a63fc..294d758f4 100644
  ; of code is a heap corruption bug!
 diff --git a/plugins/README.md b/plugins/README.md
 new file mode 100644
-index 000000000..ecbda0395
+index 000000000..04a2d5d65
 --- /dev/null
 +++ b/plugins/README.md
-@@ -0,0 +1,95 @@
-+# Plugin Development Guide
+@@ -0,0 +1,89 @@
++# Meshtastic Plugin Authoring Guide
 +
-+This directory houses plugins that extend the Meshtastic firmware. Plugins are automatically discovered and integrated into the build system.
++## Installation & Setup
++
++> **Note**: Until the plugin system is officially accepted, you must use `pip install` followed by `mpm init` in the firmware folder to apply the plugin patches to the firmware. You'll need to do this to older versions of the firmware even if this is eventually accepted into core.
++
++```bash
++# Install MPM
++pip install mesh-plugin-manager
++
++# From the firmware folder (directory containing platformio.ini)
++mpm init
++```
++
++The build system automatically uses MPM during PlatformIO builds to include all plugins and generate protobuf bindings.
 +
 +## Plugin Structure
 +
@@ -116,31 +127,15 @@ index 000000000..ecbda0395
 +- All source files must be placed in `./src`
 +- Only files in `./src` are compiled (the root plugin directory and all other subdirectories are excluded from the build)
 +
-+## Python Dependencies
-+
-+The Mesh Plugin Manager (MPM) is installed via pip. To use MPM commands:
-+
-+```bash
-+# Install MPM
-+pip install mesh-plugin-manager
-+
-+# From the firmware repo root (directory containing platformio.ini)
-+mpm <command>
-+```
-+
-+The build system automatically uses MPM during PlatformIO builds.
-+
 +## Automatic Protobuf Generation
 +
-+For convenience, the Meshtastic Plugin Manager (MPM) automatically scans for and generates protobuf files:
++MPM automatically scans for and generates protobuf files:
 +
-+- **Discovery**: MPM recursively scans plugin directories for `.proto` files
++- **Discovery**: Recursively scans plugin directories for `.proto` files
 +- **Options file**: Auto-detects matching `.options` files (e.g., `mymodule.proto` → `mymodule.options`)
 +- **Generation**: Uses `nanopb` tooling to generate C++ files
 +- **Output**: Generated files are placed in the same directory as the `.proto` file
 +- **Timing**: Runs during PlatformIO pre-build phase (configured in `platformio.ini`)
-+
-+**Note**: You can use the Mesh Plugin Manager CLI via `mpm` to inspect or manage plugins.
 +
 +Example protobuf structure:
 +
@@ -158,11 +153,11 @@ index 000000000..ecbda0395
 +
 +- Headers in `src/` can be included directly: `#include "MyModule.h"`
 +- No need to specify relative paths from other plugin files
-+- The build system handles this automatically via `bin/mpm.py`
++- The build system handles this automatically
 +
 +## Module Registration
 +
-+If your plugin implements a Meshtastic module, you can use the automatic registration system:
++If your plugin implements a Meshtastic module, you can use the automatic module registration system:
 +
 +1. Include `ModuleRegistry.h` in your module `.cpp` file
 +2. Place `MESHTASTIC_REGISTER_MODULE(ModuleClassName)` at the end of your implementation file
@@ -179,17 +174,15 @@ index 000000000..ecbda0395
 +MESHTASTIC_REGISTER_MODULE(MyModule);
 +```
 +
-+**Note**: Module registration is optional. Plugins that don't implement Meshtastic modules (e.g., utility libraries) don't need this.
++> **Note**: Module registration is optional. Plugins that don't implement Meshtastic modules (e.g., utility libraries) don't need this.
 +
 +For details on writing Meshtastic modules, see the [Module API documentation](https://meshtastic.org/docs/development/device/module-api/).
 +
-+## Example Plugin
++## Example Plugins
 +
-+See the `lobbs` plugin for a complete example that demonstrates:
-+
-+- Protobuf definitions with options file
-+- Module implementation with automatic registration
-+- Proper source file organization
++- [LoBBS](https://github.com/MeshEnvy/lobbs) - an on-firmware BBS
++- [LoDB](https://github.com/MeshEnvy/lodb) - a microncontroller-friendly relational database for persisting settings, data, and more
++- See https://meshforge.org for more
 diff --git a/plugins/sample-plugin/README.md b/plugins/sample-plugin/README.md
 new file mode 100644
 index 000000000..f60ee9b9c
