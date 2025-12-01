@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, Any, List, Set, Optional
+from typing import Dict, Any, List, Set, Optional, Iterable, Mapping, Iterator, Sequence
 import resolvelib
 import semver
 
@@ -69,24 +69,71 @@ class PluginProvider:
             return requirement_or_candidate
         return str(requirement_or_candidate)
 
-    def get_preference(self, identifier: str, resolutions: Dict[str, str], candidates: List[str], information: List[Dict[str, Any]]) -> str:
+    def narrow_requirement_selection(
+        self,
+        identifiers: Iterable[str],
+        resolutions: Mapping[str, str],
+        candidates: Mapping[str, Iterator[str]],
+        information: Mapping[str, Iterator[Any]],
+        backtrack_causes: List[Any],
+    ) -> Iterable[str]:
+        """
+        Narrow the requirement selection to optimize resolution.
+
+        Args:
+            identifiers: Iterable of plugin identifiers to consider
+            resolutions: Current resolution mapping
+            candidates: Mapping of identifiers to candidate iterators
+            information: Mapping of identifiers to requirement information
+            backtrack_causes: Sequence of requirement information causing backtracking
+
+        Returns:
+            Filtered iterable of identifiers (or all identifiers if no narrowing needed)
+        """
+        # For now, return all identifiers (no narrowing)
+        # This can be optimized later to filter out incompatible identifiers early
+        return identifiers
+
+    def get_preference(
+        self,
+        identifier: str,
+        resolutions: Mapping[str, str],
+        candidates: Mapping[str, Iterator[str]],
+        information: Mapping[str, Iterator[Any]],
+        backtrack_causes: Sequence[Any],
+    ) -> str:
         """
         Return preference for candidate selection (prefer latest versions).
 
         Args:
             identifier: Plugin slug
-            resolutions: Current resolutions
-            candidates: List of candidate versions
-            information: Information about requirements
+            resolutions: Current resolution mapping
+            candidates: Mapping of identifiers to candidate iterators
+            information: Mapping of identifiers to requirement information
+            backtrack_causes: Sequence of requirement information causing backtracking
 
         Returns:
             Preference value (lower is preferred)
         """
+        # Get candidates for this identifier
+        candidate_iter = candidates.get(identifier)
+        if candidate_iter is None:
+            return "0"
+        
+        # Convert iterator to list for sorting
+        candidate_list = list(candidate_iter)
+        if not candidate_list:
+            return "0"
+        
         # Prefer latest versions (reverse sort, so latest comes first)
-        candidates_sorted = sorted(candidates, key=lambda v: semver.Version.parse(v), reverse=True)
-        if candidates:
-            # Return index of candidate (lower index = higher preference)
-            return str(candidates_sorted.index(candidates[0]))
+        candidates_sorted = sorted(
+            candidate_list,
+            key=lambda v: semver.Version.parse(v.split("@")[1] if "@" in v else v),
+            reverse=True,
+        )
+        if candidates_sorted:
+            # Return index of first candidate (lower index = higher preference)
+            return str(candidates_sorted.index(candidate_list[0]))
         return "0"
 
     def find_matches(self, identifier: str, requirements, incompatibilities: List[str]) -> List[str]:
