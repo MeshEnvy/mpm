@@ -1,6 +1,6 @@
 [project]
 name = "mesh-plugin-manager"
-version = "1.0.1"
+version = "1.1.0"
 description = ""
 authors = [
     {name = "Ben Allfree",email = "ben@meshenvy.org"}
@@ -20,6 +20,9 @@ mpm = 'mesh_plugin_manager.cli:main'
 
 [tool.poetry]
 packages = [{include = "mesh_plugin_manager", from = "src"}]
+include = [
+    {path = "src/mesh_plugin_manager/patches", format = "sdist"}
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

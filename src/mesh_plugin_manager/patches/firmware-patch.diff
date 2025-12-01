@@ -1,0 +1,337 @@
+diff --git a/.gitignore b/.gitignore
+index cc742c6c1..e3fa69055 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -41,3 +41,8 @@ src/mesh/raspihttp/private_key.pem
+ 
+ # Ignore logo (set at build time with platformio-custom.py)
+ data/boot/logo.*
++
++# Ignore 3rd party plugins
++plugins/*
++!plugins/README.md
++!plugins/sample-plugin
+\ No newline at end of file
+diff --git a/bin/mpm_generate.py b/bin/mpm_generate.py
+new file mode 100644
+index 000000000..4bef34196
+--- /dev/null
++++ b/bin/mpm_generate.py
+@@ -0,0 +1,56 @@
++#!/usr/bin/env python3
++"""
++PlatformIO pre-build script to generate protobuf files and add plugin include paths.
++"""
++
++import os
++import subprocess
++import sys
++
++Import("env")  # type: ignore[name-defined]  # noqa: F821
++project_dir = env["PROJECT_DIR"]  # type: ignore[name-defined]  # noqa: F821
++
++# Configure build_src_filter for plugins
++# Exclude plugin root directories, include only src subdirectories
++env.Append(SRC_FILTER=["-<../plugins/*>"])  # type: ignore[name-defined]  # noqa: F821
++env.Append(SRC_FILTER=["+<../plugins/*/src>"])  # type: ignore[name-defined]  # noqa: F821
++env.Append(BUILD_FLAGS=["-Isrc/modules"])  # type: ignore[name-defined]  # noqa: F821
++# Scan for plugins and add include paths
++plugins_dir = os.path.join(project_dir, "plugins")
++if os.path.exists(plugins_dir) and os.path.isdir(plugins_dir):
++    plugin_dirs = [
++        d
++        for d in os.listdir(plugins_dir)
++        if os.path.isdir(os.path.join(plugins_dir, d)) and not d.startswith(".")
++    ]
++    
++    for plugin_name in plugin_dirs:
++        plugin_src_path = os.path.join(plugins_dir, plugin_name, "src")
++        if os.path.isdir(plugin_src_path):
++            # Add include path for this plugin
++            include_flag = f"-I{plugin_src_path}"
++            env.Append(BUILD_FLAGS=[include_flag])  # type: ignore[name-defined]  # noqa: F821
++            rel_path = os.path.relpath(plugin_src_path, project_dir)
++            print(f"MPM: Added include path {rel_path}")
++
++
++
++print(env["SRC_FILTER"])
++print(env["BUILD_FLAGS"])
++
++# Run mpm generate
++try:
++    result = subprocess.run(
++        ["mpm", "generate"],
++        cwd=project_dir,
++        capture_output=True,
++        text=True,
++    )
++    if result.returncode != 0:
++        print(f"Warning: mpm generate failed: {result.stderr}", file=sys.stderr)
++    elif result.stdout:
++        print(result.stdout)
++except FileNotFoundError:
++    print("Warning: mpm command not found. Skipping protobuf generation.", file=sys.stderr)
++except Exception as e:
++    print(f"Warning: Failed to run mpm generate: {e}", file=sys.stderr)
+diff --git a/platformio.ini b/platformio.ini
+index 1363a63fc..294d758f4 100644
+--- a/platformio.ini
++++ b/platformio.ini
+@@ -14,7 +14,9 @@ description = Meshtastic
+ 
+ [env]
+ test_build_src = true
+-extra_scripts = bin/platformio-custom.py
++extra_scripts = 
++	pre:bin/mpm_generate.py
++	bin/platformio-custom.py
+ ; note: we add src to our include search path so that lmic_project_config can override
+ ; note: TINYGPS_OPTION_NO_CUSTOM_FIELDS is VERY important.  We don't use custom fields and somewhere in that pile
+ ; of code is a heap corruption bug!
+diff --git a/plugins/README.md b/plugins/README.md
+new file mode 100644
+index 000000000..ecbda0395
+--- /dev/null
++++ b/plugins/README.md
+@@ -0,0 +1,95 @@
++# Plugin Development Guide
++
++This directory houses plugins that extend the Meshtastic firmware. Plugins are automatically discovered and integrated into the build system.
++
++## Plugin Structure
++
++The only requirement for a plugin is that it must have a `./src` directory:
++
++```
++plugins/
++└── myplugin/
++    └── src/
++        ├── MyModule.h
++        ├── MyModule.cpp
++        └── mymodule.proto
++```
++
++- Plugin directory name can be anything
++- All source files must be placed in `./src`
++- Only files in `./src` are compiled (the root plugin directory and all other subdirectories are excluded from the build)
++
++## Python Dependencies
++
++The Mesh Plugin Manager (MPM) is installed via pip. To use MPM commands:
++
++```bash
++# Install MPM
++pip install mesh-plugin-manager
++
++# From the firmware repo root (directory containing platformio.ini)
++mpm <command>
++```
++
++The build system automatically uses MPM during PlatformIO builds.
++
++## Automatic Protobuf Generation
++
++For convenience, the Meshtastic Plugin Manager (MPM) automatically scans for and generates protobuf files:
++
++- **Discovery**: MPM recursively scans plugin directories for `.proto` files
++- **Options file**: Auto-detects matching `.options` files (e.g., `mymodule.proto` → `mymodule.options`)
++- **Generation**: Uses `nanopb` tooling to generate C++ files
++- **Output**: Generated files are placed in the same directory as the `.proto` file
++- **Timing**: Runs during PlatformIO pre-build phase (configured in `platformio.ini`)
++
++**Note**: You can use the Mesh Plugin Manager CLI via `mpm` to inspect or manage plugins.
++
++Example protobuf structure:
++
++```
++src/plugins/myplugin/src/
++├── mymodule.proto      # Protobuf definition
++├── mymodule.options    # Nanopb options (optional)
++├── mymodule.pb.h       # Generated header
++└── mymodule.pb.c       # Generated implementation
++```
++
++## Include Path Setup
++
++The plugin's `src/` directory is automatically added to the compiler's include path (`CPPPATH`) during build:
++
++- Headers in `src/` can be included directly: `#include "MyModule.h"`
++- No need to specify relative paths from other plugin files
++- The build system handles this automatically via `bin/mpm.py`
++
++## Module Registration
++
++If your plugin implements a Meshtastic module, you can use the automatic registration system:
++
++1. Include `ModuleRegistry.h` in your module `.cpp` file
++2. Place `MESHTASTIC_REGISTER_MODULE(ModuleClassName)` at the end of your implementation file
++3. Your module will be automatically initialized when the firmware starts
++
++Example:
++
++```cpp
++#include "MyModule.h"
++#include "ModuleRegistry.h"
++
++// ... module implementation ...
++
++MESHTASTIC_REGISTER_MODULE(MyModule);
++```
++
++**Note**: Module registration is optional. Plugins that don't implement Meshtastic modules (e.g., utility libraries) don't need this.
++
++For details on writing Meshtastic modules, see the [Module API documentation](https://meshtastic.org/docs/development/device/module-api/).
++
++## Example Plugin
++
++See the `lobbs` plugin for a complete example that demonstrates:
++
++- Protobuf definitions with options file
++- Module implementation with automatic registration
++- Proper source file organization
+diff --git a/plugins/sample-plugin/README.md b/plugins/sample-plugin/README.md
+new file mode 100644
+index 000000000..f60ee9b9c
+--- /dev/null
++++ b/plugins/sample-plugin/README.md
+@@ -0,0 +1 @@
++Sample plugin
+\ No newline at end of file
+diff --git a/plugins/sample-plugin/src/SampleModule.cpp b/plugins/sample-plugin/src/SampleModule.cpp
+new file mode 100644
+index 000000000..647c78bd5
+--- /dev/null
++++ b/plugins/sample-plugin/src/SampleModule.cpp
+@@ -0,0 +1,13 @@
++#include "ModuleRegistry.h"
++#include "SinglePortModule.h"
++
++class MySampleModule : public SinglePortModule
++{
++  public:
++    MySampleModule() : SinglePortModule("my_sample_module", meshtastic_PortNum_REPLY_APP) {
++        LOG_INFO("MySampleModule constructor");
++    }
++};
++
++
++MESHTASTIC_REGISTER_MODULE(MySampleModule)
+\ No newline at end of file
+diff --git a/plugins/sample-plugin/src/SampleModule.h b/plugins/sample-plugin/src/SampleModule.h
+new file mode 100644
+index 000000000..4faef7774
+--- /dev/null
++++ b/plugins/sample-plugin/src/SampleModule.h
+@@ -0,0 +1,12 @@
++#ifndef SAMPLE_MODULE_H
++#define SAMPLE_MODULE_H
++
++#include "SinglePortModule.h"
++
++class MySampleModule : public SinglePortModule
++{
++  public:
++    MySampleModule() : SinglePortModule("my_sample_module", meshtastic_PortNum_REPLY_APP);
++};
++
++#endif
+\ No newline at end of file
+diff --git a/src/modules/ModuleRegistry.cpp b/src/modules/ModuleRegistry.cpp
+new file mode 100644
+index 000000000..5c83dc70f
+--- /dev/null
++++ b/src/modules/ModuleRegistry.cpp
+@@ -0,0 +1,30 @@
++// src/modules/ModuleRegistry.cpp
++
++#include "ModuleRegistry.h"
++#include "DebugConfiguration.h"
++
++// Initialize the global vector in static storage. 
++// This vector will be populated by the constructor-attributed functions.
++std::vector<ModuleInitFunc> g_module_init_functions;
++
++/**
++ * @brief Called by a module's constructor-attributed function to add 
++ * its setup routine to the central list.
++ */
++void register_module_initializer(ModuleInitFunc func) {
++    // This push_back happens during C++ static initialization, before main().
++    g_module_init_functions.push_back(func); 
++}
++
++/**
++ * @brief Initializes all modules that have self-registered.
++ * Called once by the core Meshtastic firmware setup routine.
++ */
++void init_dynamic_modules() {
++    LOG_INFO("Initializing dynamic modules via vector...\n");
++
++    // Loop through the collected pointers and execute the setup functions
++    for (ModuleInitFunc func : g_module_init_functions) {
++        func(); // Executes the module's initialization code (e.g., new MyModule())
++    }
++}
+\ No newline at end of file
+diff --git a/src/modules/ModuleRegistry.h b/src/modules/ModuleRegistry.h
+new file mode 100644
+index 000000000..82f571a5e
+--- /dev/null
++++ b/src/modules/ModuleRegistry.h
+@@ -0,0 +1,31 @@
++// src/modules/ModuleRegistry.h
++
++#ifndef MODULE_REGISTRY_H
++#define MODULE_REGISTRY_H
++
++#include <vector> // Required for std::vector
++
++// Define the function pointer type for module initialization
++typedef void (*ModuleInitFunc)(void);
++
++// The central list to hold pointers to the initialization functions.
++// This is defined externally in the CPP file.
++extern std::vector<ModuleInitFunc> g_module_init_functions;
++
++// Function that all modules will call to register themselves
++void register_module_initializer(ModuleInitFunc func);
++
++// Function called by the core firmware setup to initialize all modules
++void init_dynamic_modules();
++
++/**
++ * @brief Macro used by module authors to self-register a new Meshtastic Module.
++ * This creates a lambda that instantiates the module and automatically applies the constructor attribute.
++ * * @param ModuleClassName The name of the module's C++ class (e.g., MySensorModule).
++ */
++#define MESHTASTIC_REGISTER_MODULE(ModuleClassName) \
++    static void __attribute__((constructor)) register_##ModuleClassName() { \
++        register_module_initializer([]() { new ModuleClassName(); }); \
++    }
++
++#endif // MODULE_REGISTRY_H
+\ No newline at end of file
+diff --git a/src/modules/Modules.cpp b/src/modules/Modules.cpp
+index 827524fc3..3cd0f6405 100644
+--- a/src/modules/Modules.cpp
++++ b/src/modules/Modules.cpp
+@@ -9,6 +9,8 @@
+ #include "input/UpDownInterruptImpl1.h"
+ #include "input/i2cButton.h"
+ #include "modules/SystemCommandsModule.h"
++#include "modules/ModuleRegistry.h"
++
+ #if HAS_TRACKBALL
+ #include "input/TrackballInterruptImpl1.h"
+ #endif
+@@ -305,6 +307,9 @@ void setupModules()
+     if (moduleConfig.has_range_test && moduleConfig.range_test.enabled)
+         new RangeTestModule();
+ #endif
++
++    init_dynamic_modules();
++
+     // NOTE! This module must be added LAST because it likes to check for replies from other modules and avoid sending extra
+     // acks
+     routingModule = new RoutingModule();
