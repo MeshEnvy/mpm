@@ -74,7 +74,7 @@ index 000000000..4f241bec6
 +else:
 +    print("Skipping protobuf generation (mpm not available).", file=sys.stderr)
 diff --git a/platformio.ini b/platformio.ini
-index 1363a63fc..294d758f4 100644
+index 9b8d0a124..08c1fa03f 100644
 --- a/platformio.ini
 +++ b/platformio.ini
 @@ -14,7 +14,9 @@ description = Meshtastic
