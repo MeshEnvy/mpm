@@ -339,7 +339,7 @@ def cmd_init(args):
 
 
 def cmd_bump(args):
-    """Bump plugin version in meta.h file."""
+    """Bump plugin version in plugin.h file."""
     bump_type = args.bump_type.lower()
     
     if bump_type not in ("major", "minor", "patch"):
@@ -349,28 +349,28 @@ def cmd_bump(args):
     # Get current working directory
     cwd = Path.cwd()
     
-    # Look for meta.h in current directory or src/meta.h
-    meta_h_paths = [
-        cwd / "meta.h",
-        cwd / "src" / "meta.h",
+    # Look for plugin.h in current directory or src/plugin.h
+    plugin_h_paths = [
+        cwd / "plugin.h",
+        cwd / "src" / "plugin.h",
     ]
     
-    meta_h_path = None
-    for path in meta_h_paths:
+    plugin_h_path = None
+    for path in plugin_h_paths:
         if path.exists():
-            meta_h_path = path
+            plugin_h_path = path
             break
     
-    if not meta_h_path:
-        print("Error: meta.h not found. Expected meta.h or src/meta.h in the current directory.", file=sys.stderr)
+    if not plugin_h_path:
+        print("Error: plugin.h not found. Expected plugin.h or src/plugin.h in the current directory.", file=sys.stderr)
         sys.exit(1)
     
-    # Read meta.h
+    # Read plugin.h
     try:
-        with open(meta_h_path, 'r', encoding='utf-8') as f:
+        with open(plugin_h_path, 'r', encoding='utf-8') as f:
             content = f.read()
     except Exception as e:
-        print(f"Error reading {meta_h_path}: {e}", file=sys.stderr)
+        print(f"Error reading {plugin_h_path}: {e}", file=sys.stderr)
         sys.exit(1)
     
     # Get plugin name from directory name
@@ -380,7 +380,7 @@ def cmd_bump(args):
     # Find version string
     match = re.search(version_pattern, content)
     if not match:
-        print(f"Error: Could not find {plugin_name}_VERSION in {meta_h_path}", file=sys.stderr)
+        print(f"Error: Could not find {plugin_name}_VERSION in {plugin_h_path}", file=sys.stderr)
         print(f"Expected: #define {plugin_name}_VERSION \"X.Y.Z\"", file=sys.stderr)
         sys.exit(1)
     
@@ -408,14 +408,14 @@ def cmd_bump(args):
     
     # Write updated content
     try:
-        with open(meta_h_path, 'w', encoding='utf-8') as f:
+        with open(plugin_h_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
     except Exception as e:
-        print(f"Error writing {meta_h_path}: {e}", file=sys.stderr)
+        print(f"Error writing {plugin_h_path}: {e}", file=sys.stderr)
         sys.exit(1)
     
     print(f"Bumping version: {current_version_str} → {new_version_str} ({bump_type})")
-    print(f"✓ Updated {meta_h_path.relative_to(cwd)}")
+    print(f"✓ Updated {plugin_h_path.relative_to(cwd)}")
     
     # Search up directory tree for registry/registry.json
     plugin_slug = cwd.name.lower()
@@ -514,7 +514,7 @@ def main():
     init_parser = subparsers.add_parser("init", help="Initialize firmware for plugin support")
 
     # bump command
-    bump_parser = subparsers.add_parser("bump", help="Bump plugin version in meta.h")
+    bump_parser = subparsers.add_parser("bump", help="Bump plugin version in plugin.h")
     bump_parser.add_argument(
         "bump_type",
         choices=["major", "minor", "patch"],
