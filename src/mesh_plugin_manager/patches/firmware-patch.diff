@@ -1,20 +1,20 @@
 diff --git a/.gitignore b/.gitignore
-index cc742c6c1..f3893eed8 100644
+index cc742c6c1..9bb2e2202 100644
 --- a/.gitignore
 +++ b/.gitignore
-@@ -41,3 +41,5 @@ src/mesh/raspihttp/private_key.pem
+@@ -40,4 +40,4 @@ src/mesh/raspihttp/certificate.pem
+ src/mesh/raspihttp/private_key.pem
  
  # Ignore logo (set at build time with platformio-custom.py)
- data/boot/logo.*
-+
-+src/mesh/generated/DynamicModules.cpp
+-data/boot/logo.*
++data/boot/logo.*
 \ No newline at end of file
 diff --git a/bin/mpm_generate.py b/bin/mpm_generate.py
 new file mode 100644
-index 000000000..4f241bec6
+index 000000000..69fba02b6
 --- /dev/null
 +++ b/bin/mpm_generate.py
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,60 @@
 +#!/usr/bin/env python3
 +"""
 +PlatformIO pre-build script to generate protobuf files and add plugin include paths.
@@ -35,20 +35,11 @@ index 000000000..4f241bec6
 +# Scan for plugins and add include paths
 +plugins_dir = os.path.join(project_dir, "plugins")
 +if os.path.exists(plugins_dir) and os.path.isdir(plugins_dir):
-+    plugin_dirs = [
-+        d
-+        for d in os.listdir(plugins_dir)
-+        if os.path.isdir(os.path.join(plugins_dir, d)) and not d.startswith(".")
-+    ]
-+    
-+    for plugin_name in plugin_dirs:
-+        plugin_src_path = os.path.join(plugins_dir, plugin_name, "src")
-+        if os.path.isdir(plugin_src_path):
-+            # Add include path for this plugin
-+            include_flag = f"-I{plugin_src_path}"
-+            env.Append(BUILD_FLAGS=[include_flag])  # type: ignore[name-defined]  # noqa: F821
-+            rel_path = os.path.relpath(plugin_src_path, project_dir)
-+            print(f"MPM: Added include path {rel_path}")
++    # Add plugins directory to include path so includes must be explicit like "lobbs/src/plugin.h"
++    include_flag = f"-I{plugins_dir}"
++    env.Append(BUILD_FLAGS=[include_flag])  # type: ignore[name-defined]  # noqa: F821
++    rel_path = os.path.relpath(plugins_dir, project_dir)
++    print(f"MPM: Added include path {rel_path}")
 +
 +
 +# Check if mpm command is available
@@ -242,14 +233,12 @@ index 000000000..a1c1dc5ca
 \ No newline at end of file
 diff --git a/plugins/sample-plugin/src/SampleModule.h b/plugins/sample-plugin/src/SampleModule.h
 new file mode 100644
-index 000000000..b5054d764
+index 000000000..cdfa09731
 --- /dev/null
 +++ b/plugins/sample-plugin/src/SampleModule.h
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,14 @@
 +#ifndef SAMPLE_MODULE_H
 +#define SAMPLE_MODULE_H
-+
-+#pragma MPM_MODULE(MySampleModule, sampleModule)
 +
 +#include "SinglePortModule.h"
 +
@@ -263,6 +252,19 @@ index 000000000..b5054d764
 +
 +#endif
 \ No newline at end of file
+diff --git a/plugins/sample-plugin/src/plugin.h b/plugins/sample-plugin/src/plugin.h
+new file mode 100644
+index 000000000..dda36d0c7
+--- /dev/null
++++ b/plugins/sample-plugin/src/plugin.h
+@@ -0,0 +1,7 @@
++#pragma once
++
++#include "SampleModule.h"
++
++#pragma MPM_MODULE(MySampleModule, sampleModule)
++
++#define SAMPLE_PLUGIN_VERSION "1.0.0"
 diff --git a/src/modules/Modules.cpp b/src/modules/Modules.cpp
 index 827524fc3..1334c340e 100644
 --- a/src/modules/Modules.cpp
