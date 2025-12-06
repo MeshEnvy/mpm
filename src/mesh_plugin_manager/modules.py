@@ -46,8 +46,11 @@ def generate_dynamic_modules(project_dir, plugins, verbose=True):
                             for match in pragma_pattern.finditer(content):
                                 class_name = match.group(1)
                                 variable_name = match.group(2) if match.group(2) else None
-                                # Extract header filename (just the basename)
-                                header_filename = file
+                                # Calculate explicit include path: plugin_name/src/.../header.h
+                                # Get relative path from src_path to header file
+                                rel_path_from_src = os.path.relpath(header_path, src_path)
+                                # Construct explicit include path
+                                header_filename = f"{plugin_name}/src/{rel_path_from_src}"
                                 module_registrations.append({
                                     "plugin_name": plugin_name,
                                     "class_name": class_name,
@@ -56,7 +59,7 @@ def generate_dynamic_modules(project_dir, plugins, verbose=True):
                                 })
                                 if verbose:
                                     var_info = f" -> {variable_name}" if variable_name else ""
-                                    print(f"MPM: Found module {class_name} in {plugin_name}/{header_filename}{var_info}")
+                                    print(f"MPM: Found module {class_name} in {plugin_name}/{os.path.basename(header_path)}{var_info}")
                     except Exception as e:
                         if verbose:
                             print(f"MPM: Warning: Failed to read {header_path}: {e}")
