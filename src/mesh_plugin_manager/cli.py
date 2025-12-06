@@ -9,6 +9,7 @@ from pathlib import Path
 from mesh_plugin_manager.build_utils import find_project_dir, scan_plugins
 from mesh_plugin_manager.installer import PluginInstaller
 from mesh_plugin_manager.manifest import ManifestManager
+from mesh_plugin_manager.modules import generate_dynamic_modules
 from mesh_plugin_manager.patcher import apply_patch
 from mesh_plugin_manager.proto import generate_all_protobuf_files
 from mesh_plugin_manager.registry import RegistryClient
@@ -236,12 +237,14 @@ def cmd_remove(args):
 
 
 def cmd_generate(args):
-    """Generate protobuf files for all plugins."""
+    """Generate protobuf files and dynamic modules for all plugins."""
     project_dir = find_project_dir()
     plugins = scan_plugins(project_dir)
 
     if not plugins:
         print("No plugins found.")
+        # Still generate empty DynamicModules.cpp
+        generate_dynamic_modules(project_dir, [], verbose=args.verbose)
         return
 
     print(f"Generating protobuf files for {len(plugins)} plugin(s)...")
@@ -251,6 +254,11 @@ def cmd_generate(args):
 
     if success_count < total_count:
         sys.exit(1)
+
+    # Generate dynamic modules after protobuf generation
+    print("\nGenerating dynamic modules...")
+    if not generate_dynamic_modules(project_dir, plugins, verbose=args.verbose):
+        print("Warning: Failed to generate dynamic modules", file=sys.stderr)
 
 
 def cmd_watch(args):

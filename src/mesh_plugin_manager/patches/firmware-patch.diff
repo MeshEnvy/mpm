@@ -1,3 +1,14 @@
+diff --git a/.gitignore b/.gitignore
+index cc742c6c1..f3893eed8 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -41,3 +41,5 @@ src/mesh/raspihttp/private_key.pem
+ 
+ # Ignore logo (set at build time with platformio-custom.py)
+ data/boot/logo.*
++
++src/mesh/generated/DynamicModules.cpp
+\ No newline at end of file
 diff --git a/bin/mpm_generate.py b/bin/mpm_generate.py
 new file mode 100644
 index 000000000..4f241bec6
@@ -90,10 +101,10 @@ index 9b8d0a124..08c1fa03f 100644
  ; of code is a heap corruption bug!
 diff --git a/plugins/README.md b/plugins/README.md
 new file mode 100644
-index 000000000..04a2d5d65
+index 000000000..dc8800a58
 --- /dev/null
 +++ b/plugins/README.md
-@@ -0,0 +1,89 @@
+@@ -0,0 +1,110 @@
 +# Meshtastic Plugin Authoring Guide
 +
 +## Installation & Setup
@@ -157,22 +168,43 @@ index 000000000..04a2d5d65
 +
 +## Module Registration
 +
-+If your plugin implements a Meshtastic module, you can use the automatic module registration system:
++If your plugin implements a Meshtastic module, use the `#pragma MPM_MODULE` directive in your header file:
 +
-+1. Include `ModuleRegistry.h` in your module `.cpp` file
-+2. Place `MESHTASTIC_REGISTER_MODULE(ModuleClassName)` at the end of your implementation file
-+3. Your module will be automatically initialized when the firmware starts
++1. Add `#pragma MPM_MODULE(ClassName)` to your module's header file (`.h`)
++2. Optionally specify a variable name: `#pragma MPM_MODULE(ClassName, variableName)`
++3. If you specify a variable name, declare it as `extern` in your header file
++4. Your module will be automatically initialized when the firmware starts
 +
-+Example:
++Example (without variable):
 +
 +```cpp
-+#include "MyModule.h"
-+#include "ModuleRegistry.h"
++// MyModule.h
++#pragma once
++#pragma MPM_MODULE(MyModule)
 +
-+// ... module implementation ...
-+
-+MESHTASTIC_REGISTER_MODULE(MyModule);
++class MyModule : public SinglePortModule {
++    // ... module definition ...
++};
 +```
++
++Example (with variable - for modules that need to be referenced elsewhere):
++
++```cpp
++// MyModule.h
++#pragma once
++#pragma MPM_MODULE(MyModule, myModule)
++
++#include "SinglePortModule.h"
++
++class MyModule : public SinglePortModule {
++    // ... module definition ...
++};
++
++// Declare the variable as extern so other files can reference it
++extern MyModule *myModule;
++```
++
++The variable will be assigned in the generated `init_dynamic_modules()` function. If you don't need to reference your module from other files, you can omit the variable name and extern declaration.
 +
 +> **Note**: Module registration is optional. Plugins that don't implement Meshtastic modules (e.g., utility libraries) don't need this.
 +
@@ -193,132 +225,66 @@ index 000000000..f60ee9b9c
 \ No newline at end of file
 diff --git a/plugins/sample-plugin/src/SampleModule.cpp b/plugins/sample-plugin/src/SampleModule.cpp
 new file mode 100644
-index 000000000..647c78bd5
+index 000000000..a1c1dc5ca
 --- /dev/null
 +++ b/plugins/sample-plugin/src/SampleModule.cpp
-@@ -0,0 +1,13 @@
-+#include "ModuleRegistry.h"
+@@ -0,0 +1,10 @@
++#include "SampleModule.h"
 +#include "SinglePortModule.h"
++#include "configuration.h"
 +
-+class MySampleModule : public SinglePortModule
++MySampleModule *sampleModule;
++
++MySampleModule::MySampleModule() : SinglePortModule("my_sample_module", meshtastic_PortNum_REPLY_APP)
 +{
-+  public:
-+    MySampleModule() : SinglePortModule("my_sample_module", meshtastic_PortNum_REPLY_APP) {
-+        LOG_INFO("MySampleModule constructor");
-+    }
-+};
-+
-+
-+MESHTASTIC_REGISTER_MODULE(MySampleModule)
++    LOG_INFO("MySampleModule constructor");
++}
 \ No newline at end of file
 diff --git a/plugins/sample-plugin/src/SampleModule.h b/plugins/sample-plugin/src/SampleModule.h
 new file mode 100644
-index 000000000..4faef7774
+index 000000000..b5054d764
 --- /dev/null
 +++ b/plugins/sample-plugin/src/SampleModule.h
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,16 @@
 +#ifndef SAMPLE_MODULE_H
 +#define SAMPLE_MODULE_H
++
++#pragma MPM_MODULE(MySampleModule, sampleModule)
 +
 +#include "SinglePortModule.h"
 +
 +class MySampleModule : public SinglePortModule
 +{
 +  public:
-+    MySampleModule() : SinglePortModule("my_sample_module", meshtastic_PortNum_REPLY_APP);
++    MySampleModule();
 +};
++
++extern MySampleModule *sampleModule;
 +
 +#endif
 \ No newline at end of file
-diff --git a/src/modules/ModuleRegistry.cpp b/src/modules/ModuleRegistry.cpp
-new file mode 100644
-index 000000000..5c83dc70f
---- /dev/null
-+++ b/src/modules/ModuleRegistry.cpp
-@@ -0,0 +1,30 @@
-+// src/modules/ModuleRegistry.cpp
-+
-+#include "ModuleRegistry.h"
-+#include "DebugConfiguration.h"
-+
-+// Initialize the global vector in static storage. 
-+// This vector will be populated by the constructor-attributed functions.
-+std::vector<ModuleInitFunc> g_module_init_functions;
-+
-+/**
-+ * @brief Called by a module's constructor-attributed function to add 
-+ * its setup routine to the central list.
-+ */
-+void register_module_initializer(ModuleInitFunc func) {
-+    // This push_back happens during C++ static initialization, before main().
-+    g_module_init_functions.push_back(func); 
-+}
-+
-+/**
-+ * @brief Initializes all modules that have self-registered.
-+ * Called once by the core Meshtastic firmware setup routine.
-+ */
-+void init_dynamic_modules() {
-+    LOG_INFO("Initializing dynamic modules via vector...\n");
-+
-+    // Loop through the collected pointers and execute the setup functions
-+    for (ModuleInitFunc func : g_module_init_functions) {
-+        func(); // Executes the module's initialization code (e.g., new MyModule())
-+    }
-+}
-\ No newline at end of file
-diff --git a/src/modules/ModuleRegistry.h b/src/modules/ModuleRegistry.h
-new file mode 100644
-index 000000000..82f571a5e
---- /dev/null
-+++ b/src/modules/ModuleRegistry.h
-@@ -0,0 +1,31 @@
-+// src/modules/ModuleRegistry.h
-+
-+#ifndef MODULE_REGISTRY_H
-+#define MODULE_REGISTRY_H
-+
-+#include <vector> // Required for std::vector
-+
-+// Define the function pointer type for module initialization
-+typedef void (*ModuleInitFunc)(void);
-+
-+// The central list to hold pointers to the initialization functions.
-+// This is defined externally in the CPP file.
-+extern std::vector<ModuleInitFunc> g_module_init_functions;
-+
-+// Function that all modules will call to register themselves
-+void register_module_initializer(ModuleInitFunc func);
-+
-+// Function called by the core firmware setup to initialize all modules
-+void init_dynamic_modules();
-+
-+/**
-+ * @brief Macro used by module authors to self-register a new Meshtastic Module.
-+ * This creates a lambda that instantiates the module and automatically applies the constructor attribute.
-+ * * @param ModuleClassName The name of the module's C++ class (e.g., MySensorModule).
-+ */
-+#define MESHTASTIC_REGISTER_MODULE(ModuleClassName) \
-+    static void __attribute__((constructor)) register_##ModuleClassName() { \
-+        register_module_initializer([]() { new ModuleClassName(); }); \
-+    }
-+
-+#endif // MODULE_REGISTRY_H
-\ No newline at end of file
 diff --git a/src/modules/Modules.cpp b/src/modules/Modules.cpp
-index 827524fc3..3cd0f6405 100644
+index 827524fc3..1334c340e 100644
 --- a/src/modules/Modules.cpp
 +++ b/src/modules/Modules.cpp
-@@ -9,6 +9,8 @@
+@@ -1,4 +1,8 @@
+ #include "configuration.h"
++
++// Forward declaration - implementation in src/mesh/generated/DynamicModules.cpp
++void init_dynamic_modules();
++
+ #if !MESHTASTIC_EXCLUDE_INPUTBROKER
+ #include "buzz/BuzzerFeedbackThread.h"
+ #include "input/ExpressLRSFiveWay.h"
+@@ -9,6 +13,7 @@
  #include "input/UpDownInterruptImpl1.h"
  #include "input/i2cButton.h"
  #include "modules/SystemCommandsModule.h"
-+#include "modules/ModuleRegistry.h"
 +
  #if HAS_TRACKBALL
  #include "input/TrackballInterruptImpl1.h"
  #endif
-@@ -305,6 +307,9 @@ void setupModules()
+@@ -305,6 +310,9 @@ void setupModules()
      if (moduleConfig.has_range_test && moduleConfig.range_test.enabled)
          new RangeTestModule();
  #endif
