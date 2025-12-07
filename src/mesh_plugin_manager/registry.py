@@ -11,7 +11,7 @@ import requests
 class RegistryClient:
     """Client for fetching and caching plugin registry."""
 
-    REGISTRY_URL = "https://registry.meshforge.org/registry.json"
+    REGISTRY_URL = "https://meshforge.org/registry.json"
     CACHE_DURATION = 3600  # 1 hour in seconds
 
     def __init__(self, cache_dir: Optional[str] = None):

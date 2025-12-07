@@ -417,14 +417,14 @@ def cmd_bump(args):
     print(f"Bumping version: {current_version_str} → {new_version_str} ({bump_type})")
     print(f"✓ Updated {plugin_h_path.relative_to(cwd)}")
     
-    # Search up directory tree for registry/registry.json
+    # Search up directory tree for registry.json
     plugin_slug = cwd.name.lower()
     registry_path = None
     search_dir = cwd.parent
     
     # Search up to 10 levels (reasonable limit)
     for _ in range(10):
-        potential_registry = search_dir / "registry" / "registry.json"
+        potential_registry = search_dir / "public" / "registry.json"
         if potential_registry.exists():
             registry_path = potential_registry
             break
@@ -456,7 +456,7 @@ def cmd_bump(args):
                     print(f"✓ Updated {rel_path}")
                 except (ValueError, AttributeError):
                     # Fallback to showing just the filename
-                    print(f"✓ Updated registry/registry.json")
+                    print(f"✓ Updated registry.json")
             else:
                 print(f"  Note: Plugin '{plugin_slug}' not found in registry.json")
         except Exception as e:
