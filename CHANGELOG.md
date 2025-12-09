@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Patch
+- Updated README with explanation for why PlatformIO's package management system isn't used
+- Added changelog documentation
+
 ## [1.5.0] - 2025-12-06
 
 ### Patch
