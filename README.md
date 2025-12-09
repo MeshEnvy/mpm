@@ -38,3 +38,9 @@ mpm remove <slug>
 mpm proto
 ```
 
+## Why aren't we using PlatformIO's package management system?
+
+* Libraries are very slow to install using `pio pkg install` because they install ONCE for EVERY environment target. We don't need that capability.
+* MPM can add security features such as enforcing signed releases and revoking bad releases (refusing to compile)
+* MPM can enforce Meshtastic-specific target environment compatibility and refuse to compile plugins into targets that will not work.
+* MPM can maintain a Meshtastic-specific plugin registry where plugin discovery is easier and publishing is faster due to a streamlined approval process.
