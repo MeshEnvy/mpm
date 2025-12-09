@@ -10,7 +10,6 @@ from mesh_plugin_manager.commands.install import cmd_install
 from mesh_plugin_manager.commands.list import cmd_list
 from mesh_plugin_manager.commands.remove import cmd_remove
 from mesh_plugin_manager.commands.version import cmd_version, get_mpm_version
-from mesh_plugin_manager.commands.watch import cmd_watch
 
 
 def main():
@@ -50,9 +49,6 @@ def main():
         help="Show verbose output",
     )
 
-    # watch command
-    watch_parser = subparsers.add_parser("watch", help="Watch for changes and regenerate protobuf files")
-
     # init command
     init_parser = subparsers.add_parser("init", help="Initialize firmware for plugin support")
 
@@ -83,8 +79,6 @@ def main():
         cmd_remove(args)
     elif args.command == "generate":
         cmd_generate(args)
-    elif args.command == "watch":
-        cmd_watch(args)
     elif args.command == "init":
         cmd_init(args)
     elif args.command == "bump":
