@@ -1,14 +1,3 @@
-diff --git a/.gitignore b/.gitignore
-index cc742c6c1..9bb2e2202 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -40,4 +40,4 @@ src/mesh/raspihttp/certificate.pem
- src/mesh/raspihttp/private_key.pem
- 
- # Ignore logo (set at build time with platformio-custom.py)
--data/boot/logo.*
-+data/boot/logo.*
-\ No newline at end of file
 diff --git a/bin/mpm_generate.py b/bin/mpm_generate.py
 new file mode 100644
 index 000000000..69fba02b6
@@ -76,197 +65,19 @@ index 000000000..69fba02b6
 +else:
 +    print("Skipping protobuf generation (mpm not available).", file=sys.stderr)
 diff --git a/platformio.ini b/platformio.ini
-index 9b8d0a124..08c1fa03f 100644
+index 218b75443..72fe5e025 100644
 --- a/platformio.ini
 +++ b/platformio.ini
-@@ -14,7 +14,9 @@ description = Meshtastic
- 
- [env]
- test_build_src = true
--extra_scripts = bin/platformio-custom.py
-+extra_scripts = 
+@@ -17,6 +17,7 @@ test_build_src = true
+ extra_scripts =
+ 	pre:bin/platformio-pre.py
+ 	bin/platformio-custom.py
 +	pre:bin/mpm_generate.py
-+	bin/platformio-custom.py
  ; note: we add src to our include search path so that lmic_project_config can override
  ; note: TINYGPS_OPTION_NO_CUSTOM_FIELDS is VERY important.  We don't use custom fields and somewhere in that pile
  ; of code is a heap corruption bug!
-diff --git a/plugins/README.md b/plugins/README.md
-new file mode 100644
-index 000000000..dc8800a58
---- /dev/null
-+++ b/plugins/README.md
-@@ -0,0 +1,110 @@
-+# Meshtastic Plugin Authoring Guide
-+
-+## Installation & Setup
-+
-+> **Note**: Until the plugin system is officially accepted, you must use `pip install` followed by `mpm init` in the firmware folder to apply the plugin patches to the firmware. You'll need to do this to older versions of the firmware even if this is eventually accepted into core.
-+
-+```bash
-+# Install MPM
-+pip install mesh-plugin-manager
-+
-+# From the firmware folder (directory containing platformio.ini)
-+mpm init
-+```
-+
-+The build system automatically uses MPM during PlatformIO builds to include all plugins and generate protobuf bindings.
-+
-+## Plugin Structure
-+
-+The only requirement for a plugin is that it must have a `./src` directory:
-+
-+```
-+plugins/
-+└── myplugin/
-+    └── src/
-+        ├── MyModule.h
-+        ├── MyModule.cpp
-+        └── mymodule.proto
-+```
-+
-+- Plugin directory name can be anything
-+- All source files must be placed in `./src`
-+- Only files in `./src` are compiled (the root plugin directory and all other subdirectories are excluded from the build)
-+
-+## Automatic Protobuf Generation
-+
-+MPM automatically scans for and generates protobuf files:
-+
-+- **Discovery**: Recursively scans plugin directories for `.proto` files
-+- **Options file**: Auto-detects matching `.options` files (e.g., `mymodule.proto` → `mymodule.options`)
-+- **Generation**: Uses `nanopb` tooling to generate C++ files
-+- **Output**: Generated files are placed in the same directory as the `.proto` file
-+- **Timing**: Runs during PlatformIO pre-build phase (configured in `platformio.ini`)
-+
-+Example protobuf structure:
-+
-+```
-+src/plugins/myplugin/src/
-+├── mymodule.proto      # Protobuf definition
-+├── mymodule.options    # Nanopb options (optional)
-+├── mymodule.pb.h       # Generated header
-+└── mymodule.pb.c       # Generated implementation
-+```
-+
-+## Include Path Setup
-+
-+The plugin's `src/` directory is automatically added to the compiler's include path (`CPPPATH`) during build:
-+
-+- Headers in `src/` can be included directly: `#include "MyModule.h"`
-+- No need to specify relative paths from other plugin files
-+- The build system handles this automatically
-+
-+## Module Registration
-+
-+If your plugin implements a Meshtastic module, use the `#pragma MPM_MODULE` directive in your header file:
-+
-+1. Add `#pragma MPM_MODULE(ClassName)` to your module's header file (`.h`)
-+2. Optionally specify a variable name: `#pragma MPM_MODULE(ClassName, variableName)`
-+3. If you specify a variable name, declare it as `extern` in your header file
-+4. Your module will be automatically initialized when the firmware starts
-+
-+Example (without variable):
-+
-+```cpp
-+// MyModule.h
-+#pragma once
-+#pragma MPM_MODULE(MyModule)
-+
-+class MyModule : public SinglePortModule {
-+    // ... module definition ...
-+};
-+```
-+
-+Example (with variable - for modules that need to be referenced elsewhere):
-+
-+```cpp
-+// MyModule.h
-+#pragma once
-+#pragma MPM_MODULE(MyModule, myModule)
-+
-+#include "SinglePortModule.h"
-+
-+class MyModule : public SinglePortModule {
-+    // ... module definition ...
-+};
-+
-+// Declare the variable as extern so other files can reference it
-+extern MyModule *myModule;
-+```
-+
-+The variable will be assigned in the generated `init_dynamic_modules()` function. If you don't need to reference your module from other files, you can omit the variable name and extern declaration.
-+
-+> **Note**: Module registration is optional. Plugins that don't implement Meshtastic modules (e.g., utility libraries) don't need this.
-+
-+For details on writing Meshtastic modules, see the [Module API documentation](https://meshtastic.org/docs/development/device/module-api/).
-+
-+## Example Plugins
-+
-+- [LoBBS](https://github.com/MeshEnvy/lobbs) - an on-firmware BBS
-+- [LoDB](https://github.com/MeshEnvy/lodb) - a microncontroller-friendly relational database for persisting settings, data, and more
-+- See https://meshforge.org for more
-diff --git a/plugins/sample-plugin/README.md b/plugins/sample-plugin/README.md
-new file mode 100644
-index 000000000..f60ee9b9c
---- /dev/null
-+++ b/plugins/sample-plugin/README.md
-@@ -0,0 +1 @@
-+Sample plugin
-\ No newline at end of file
-diff --git a/plugins/sample-plugin/src/SampleModule.cpp b/plugins/sample-plugin/src/SampleModule.cpp
-new file mode 100644
-index 000000000..a1c1dc5ca
---- /dev/null
-+++ b/plugins/sample-plugin/src/SampleModule.cpp
-@@ -0,0 +1,10 @@
-+#include "SampleModule.h"
-+#include "SinglePortModule.h"
-+#include "configuration.h"
-+
-+MySampleModule *sampleModule;
-+
-+MySampleModule::MySampleModule() : SinglePortModule("my_sample_module", meshtastic_PortNum_REPLY_APP)
-+{
-+    LOG_INFO("MySampleModule constructor");
-+}
-\ No newline at end of file
-diff --git a/plugins/sample-plugin/src/SampleModule.h b/plugins/sample-plugin/src/SampleModule.h
-new file mode 100644
-index 000000000..cdfa09731
---- /dev/null
-+++ b/plugins/sample-plugin/src/SampleModule.h
-@@ -0,0 +1,14 @@
-+#ifndef SAMPLE_MODULE_H
-+#define SAMPLE_MODULE_H
-+
-+#include "SinglePortModule.h"
-+
-+class MySampleModule : public SinglePortModule
-+{
-+  public:
-+    MySampleModule();
-+};
-+
-+extern MySampleModule *sampleModule;
-+
-+#endif
-\ No newline at end of file
-diff --git a/plugins/sample-plugin/src/plugin.h b/plugins/sample-plugin/src/plugin.h
-new file mode 100644
-index 000000000..dda36d0c7
---- /dev/null
-+++ b/plugins/sample-plugin/src/plugin.h
-@@ -0,0 +1,7 @@
-+#pragma once
-+
-+#include "SampleModule.h"
-+
-+#pragma MPM_MODULE(MySampleModule, sampleModule)
-+
-+#define SAMPLE_PLUGIN_VERSION "1.0.0"
 diff --git a/src/modules/Modules.cpp b/src/modules/Modules.cpp
-index 827524fc3..1334c340e 100644
+index f918d630f..a32edd772 100644
 --- a/src/modules/Modules.cpp
 +++ b/src/modules/Modules.cpp
 @@ -1,4 +1,8 @@
@@ -278,15 +89,7 @@ index 827524fc3..1334c340e 100644
  #if !MESHTASTIC_EXCLUDE_INPUTBROKER
  #include "buzz/BuzzerFeedbackThread.h"
  #include "input/ExpressLRSFiveWay.h"
-@@ -9,6 +13,7 @@
- #include "input/UpDownInterruptImpl1.h"
- #include "input/i2cButton.h"
- #include "modules/SystemCommandsModule.h"
-+
- #if HAS_TRACKBALL
- #include "input/TrackballInterruptImpl1.h"
- #endif
-@@ -305,6 +310,9 @@ void setupModules()
+@@ -305,6 +309,9 @@ void setupModules()
      if (moduleConfig.has_range_test && moduleConfig.range_test.enabled)
          new RangeTestModule();
  #endif
