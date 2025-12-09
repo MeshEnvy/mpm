@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Patch
+- Refactored CLI commands into separate modules (each command now has its own module in `commands/`)
 - Updated README with explanation for why PlatformIO's package management system isn't used
 - Added changelog documentation
 
