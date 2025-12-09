@@ -7,6 +7,13 @@ from mesh_plugin_manager.installer import PluginInstaller
 from mesh_plugin_manager.manifest import ManifestManager
 
 
+def register(subparsers):
+    """Register the remove command."""
+    parser = subparsers.add_parser("remove", help="Remove a plugin")
+    parser.add_argument("plugin", help="Plugin slug to remove")
+    return cmd_remove
+
+
 def cmd_remove(args):
     """Remove a plugin."""
     project_dir = find_project_dir()

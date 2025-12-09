@@ -9,6 +9,17 @@ from mesh_plugin_manager.registry import RegistryClient
 from mesh_plugin_manager.resolver import DependencyResolver
 
 
+def register(subparsers):
+    """Register the install command."""
+    parser = subparsers.add_parser("install", help="Install plugins")
+    parser.add_argument(
+        "plugins",
+        nargs="*",
+        help="Plugin slugs to install (if not specified, installs all from meshtastic.json)",
+    )
+    return cmd_install
+
+
 def cmd_install(args):
     """Install plugins."""
     project_dir = find_project_dir()

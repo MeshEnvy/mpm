@@ -10,6 +10,17 @@ import semver
 from mesh_plugin_manager.build_utils import find_project_dir
 
 
+def register(subparsers):
+    """Register the bump command."""
+    parser = subparsers.add_parser("bump", help="Bump plugin version in plugin.h")
+    parser.add_argument(
+        "bump_type",
+        choices=["major", "minor", "patch"],
+        help="Version bump type (major, minor, or patch)",
+    )
+    return cmd_bump
+
+
 def cmd_bump(args):
     """Bump plugin version in plugin.h file."""
     bump_type = args.bump_type.lower()

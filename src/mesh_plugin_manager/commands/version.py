@@ -4,6 +4,12 @@ import tomllib
 from pathlib import Path
 
 
+def register(subparsers):
+    """Register the version command."""
+    parser = subparsers.add_parser("version", help="Display version information")
+    return cmd_version
+
+
 def get_mpm_version():
     """Get the version of mesh-plugin-manager from pyproject.toml or installed package."""
     # First, try to read from pyproject.toml (development mode)

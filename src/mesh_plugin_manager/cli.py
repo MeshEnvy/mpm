@@ -1,15 +1,33 @@
 """Command-line interface for mpm."""
 
 import argparse
+import importlib
+import pkgutil
 import sys
+from pathlib import Path
 
-from mesh_plugin_manager.commands.bump import cmd_bump
-from mesh_plugin_manager.commands.generate import cmd_generate
-from mesh_plugin_manager.commands.init import cmd_init
-from mesh_plugin_manager.commands.install import cmd_install
-from mesh_plugin_manager.commands.list import cmd_list
-from mesh_plugin_manager.commands.remove import cmd_remove
-from mesh_plugin_manager.commands.version import cmd_version, get_mpm_version
+from mesh_plugin_manager.commands.version import get_mpm_version
+
+
+def _discover_commands():
+    """Discover all command modules and return a dict mapping command name to handler."""
+    commands = {}
+    commands_module = Path(__file__).parent / "commands"
+    
+    # Import all modules in the commands package
+    for _, module_name, _ in pkgutil.iter_modules([str(commands_module)]):
+        if module_name == "__init__":
+            continue
+        
+        try:
+            module = importlib.import_module(f"mesh_plugin_manager.commands.{module_name}")
+            if hasattr(module, "register"):
+                # Store the module for later registration
+                commands[module_name] = module
+        except ImportError:
+            continue
+    
+    return commands
 
 
 def main():
@@ -21,47 +39,16 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
-    # list command
-    list_parser = subparsers.add_parser("list", help="List plugins")
-    list_parser.add_argument(
-        "--all",
-        action="store_true",
-        help="List all available plugins from registry",
-    )
-
-    # install command
-    install_parser = subparsers.add_parser("install", help="Install plugins")
-    install_parser.add_argument(
-        "plugins",
-        nargs="*",
-        help="Plugin slugs to install (if not specified, installs all from meshtastic.json)",
-    )
-
-    # remove command
-    remove_parser = subparsers.add_parser("remove", help="Remove a plugin")
-    remove_parser.add_argument("plugin", help="Plugin slug to remove")
-
-    # generate command
-    generate_parser = subparsers.add_parser("generate", help="Generate protobuf files for all plugins")
-    generate_parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Show verbose output",
-    )
-
-    # init command
-    init_parser = subparsers.add_parser("init", help="Initialize firmware for plugin support")
-
-    # bump command
-    bump_parser = subparsers.add_parser("bump", help="Bump plugin version in plugin.h")
-    bump_parser.add_argument(
-        "bump_type",
-        choices=["major", "minor", "patch"],
-        help="Version bump type (major, minor, or patch)",
-    )
-
-    # version command
-    version_parser = subparsers.add_parser("version", help="Display version information")
+    # Discover and register all commands
+    command_handlers = {}
+    command_modules = _discover_commands()
+    
+    for module_name, module in command_modules.items():
+        handler = module.register(subparsers)
+        # Map command name (from parser) to handler
+        # The command name is typically the same as module name
+        command_name = module_name
+        command_handlers[command_name] = handler
 
     args = parser.parse_args()
 
@@ -71,20 +58,8 @@ def main():
         sys.exit(0)
 
     # Route to appropriate command handler
-    if args.command == "list":
-        cmd_list(args)
-    elif args.command == "install":
-        cmd_install(args)
-    elif args.command == "remove":
-        cmd_remove(args)
-    elif args.command == "generate":
-        cmd_generate(args)
-    elif args.command == "init":
-        cmd_init(args)
-    elif args.command == "bump":
-        cmd_bump(args)
-    elif args.command == "version":
-        cmd_version(args)
+    if args.command in command_handlers:
+        command_handlers[args.command](args)
     else:
         parser.print_help()
         sys.exit(1)

@@ -7,6 +7,17 @@ from mesh_plugin_manager.manifest import ManifestManager
 from mesh_plugin_manager.registry import RegistryClient
 
 
+def register(subparsers):
+    """Register the list command."""
+    parser = subparsers.add_parser("list", help="List plugins")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="List all available plugins from registry",
+    )
+    return cmd_list
+
+
 def cmd_list(args):
     """List installed or available plugins."""
     project_dir = find_project_dir()

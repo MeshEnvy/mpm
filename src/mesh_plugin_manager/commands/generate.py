@@ -7,6 +7,17 @@ from mesh_plugin_manager.modules import generate_dynamic_modules
 from mesh_plugin_manager.proto import generate_all_protobuf_files
 
 
+def register(subparsers):
+    """Register the generate command."""
+    parser = subparsers.add_parser("generate", help="Generate protobuf files for all plugins")
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show verbose output",
+    )
+    return cmd_generate
+
+
 def cmd_generate(args):
     """Generate protobuf files and dynamic modules for all plugins."""
     project_dir = find_project_dir()
