@@ -13,6 +13,7 @@ dependencies = [
     "requests>=2.31.0",
     "nanopb>=0.4.9",
     "grpcio-tools>=1.0.0",
+    "jinja2>=3.0.0",
 ]
 
 [project.scripts]
@@ -21,7 +22,8 @@ mpm = 'mesh_plugin_manager.cli:main'
 [tool.poetry]
 packages = [{include = "mesh_plugin_manager", from = "src"}]
 include = [
-    {path = "src/mesh_plugin_manager/patches", format = "sdist"}
+    {path = "src/mesh_plugin_manager/patches", format = "sdist"},
+    {path = "src/mesh_plugin_manager/templates", format = "sdist"}
 ]
 
 [build-system]

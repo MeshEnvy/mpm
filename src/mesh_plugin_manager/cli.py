@@ -24,7 +24,13 @@ def _discover_commands():
             if hasattr(module, "register"):
                 # Store the module for later registration
                 commands[module_name] = module
-        except ImportError:
+        except ImportError as e:
+            # Log import errors for debugging but continue
+            print(f"Warning: Failed to import command '{module_name}': {e}", file=sys.stderr)
+            continue
+        except Exception as e:
+            # Log other errors but continue
+            print(f"Warning: Error loading command '{module_name}': {e}", file=sys.stderr)
             continue
     
     return commands

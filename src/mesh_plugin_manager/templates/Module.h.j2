@@ -1,0 +1,27 @@
+#pragma once
+
+#include "plugin.h"
+#include "SinglePortModule.h"
+
+/**
+ * {{ plugin_name }} Module
+ *
+ * A Meshtastic firmware plugin.
+ */
+class {{ plugin_name }}Module : public SinglePortModule
+{
+  public:
+    {{ plugin_name }}Module();
+
+  protected:
+    /**
+     * Handle an incoming message
+     */
+    virtual ProcessMessage handleReceived(const meshtastic_MeshPacket &mp) override;
+
+  private:
+    // TODO: Add private members
+};
+
+extern {{ plugin_name }}Module *{{ plugin_slug_cpp }}Module;
+

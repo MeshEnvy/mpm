@@ -26,7 +26,10 @@ def generate_dynamic_modules(project_dir, plugins, verbose=True):
 
     # Collect module registrations from plugin headers
     module_registrations = []
-    pragma_pattern = re.compile(r'#pragma\s+MPM_MODULE\s*\(\s*(\w+)(?:\s*,\s*(\w+))?\s*\)')
+    # Pattern matches: // MPM_REGISTER_MESHTASTIC_MODULE: ClassName, variableName, [dependencies]
+    # All three parameters are required
+    # Format: // MPM_REGISTER_MESHTASTIC_MODULE: ClassName, variableName, [deps]
+    module_pattern = re.compile(r'//\s*MPM_REGISTER_MESHTASTIC_MODULE\s*:\s*(\w+)\s*,\s*(\w+)\s*,\s*([^\n]+)')
 
     for plugin_name, plugin_path, src_path, proto_files in plugins:
         # Scan all .h files in the plugin src directory
@@ -42,10 +45,10 @@ def generate_dynamic_modules(project_dir, plugins, verbose=True):
                     try:
                         with open(header_path, "r", encoding="utf-8") as f:
                             content = f.read()
-                            # Search for pragma in the file
-                            for match in pragma_pattern.finditer(content):
+                            # Search for MPM_REGISTER_MESHTASTIC_MODULE comment directive in the file
+                            for match in module_pattern.finditer(content):
                                 class_name = match.group(1)
-                                variable_name = match.group(2) if match.group(2) else None
+                                variable_name = match.group(2)
                                 # Calculate explicit include path: plugin_name/src/.../header.h
                                 # Get relative path from src_path to header file
                                 rel_path_from_src = os.path.relpath(header_path, src_path)

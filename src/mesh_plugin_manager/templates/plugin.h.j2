@@ -1,0 +1,13 @@
+#pragma once
+
+#define {{ plugin_slug_snake_upper }}_VERSION "0.0.1"
+
+#include "{{ plugin_name }}Module.h"
+
+/**
+ * This plugin registers a Module with Meshtastic. Modules are the primary way
+ * to extend Meshtastic with new functionality. Modules are registered with the
+ * MPM_REGISTER_MESHTASTIC_MODULE comment directive below.
+ */
+// MPM_REGISTER_MESHTASTIC_MODULE: {{ plugin_name }}Module, {{ plugin_slug_cpp }}Module, []
+
