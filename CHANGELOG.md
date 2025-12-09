@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2025-12-09
+
 ### Minor
 - Added `new` command to create new plugin scaffolding
 - Removed `watch` command
+- Changed from `#pragma` to structured comment with `MPM_REGISTER_MESHTASTIC_MODULE` comment directive support for automatic module registration in plugin headers
 
 ### Patch
 - Refactored CLI to use self-registering command pattern (each command module registers itself via `register()` function)
@@ -73,7 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build utilities for Meshtastic plugins
 - Registry support for plugin discovery
 
-[Unreleased]: https://github.com/MeshEnvy/mpm/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/MeshEnvy/mpm/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/MeshEnvy/mpm/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/MeshEnvy/mpm/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/MeshEnvy/mpm/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/MeshEnvy/mpm/compare/v1.1.3...v1.3.0
