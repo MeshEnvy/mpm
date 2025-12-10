@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2025-12-09
+
+### Patch
+- Fixed patch diff generation and application
+
 ## [1.7.0] - 2025-12-09
 
 ### Minor
@@ -86,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build utilities for Meshtastic plugins
 - Registry support for plugin discovery
 
-[Unreleased]: https://github.com/MeshEnvy/mpm/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/MeshEnvy/mpm/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/MeshEnvy/mpm/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/MeshEnvy/mpm/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/MeshEnvy/mpm/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/MeshEnvy/mpm/compare/v1.4.0...v1.5.0
