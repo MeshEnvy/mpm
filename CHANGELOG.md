@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Minor
+- Added automatic patch version selection - patcher now finds all versioned patches and selects the latest compatible version (<= firmware version)
+- Added support for branch/tag-specific patches - checks for exact match patch files (e.g., `firmware-patch-develop.diff`) before falling back to version matching
+
+### Patch
+- Changed patch application to use `git apply --3way` to create merge conflicts instead of failing silently when patches don't apply cleanly
+- Simplified `generate-firmware-patch.sh` script to use `mpm init` directly instead of maintaining a separate branch
+
 ## [1.6.0] - 2025-12-09
 
 ### Minor

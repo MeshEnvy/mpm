@@ -14,11 +14,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENDOR_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FIRMWARE_DIR="$VENDOR_ROOT/firmware"
-PATCH_FILE="$VENDOR_ROOT/mpm/src/mesh_plugin_manager/patches/firmware-patch.diff"
-
-echo "VENDOR_ROOT: $VENDOR_ROOT"
-echo "FIRMWARE_DIR: $FIRMWARE_DIR"
-echo "PATCH_FILE: $PATCH_FILE"
+PATCH_DIR="$VENDOR_ROOT/mpm/src/mesh_plugin_manager/patches"
 
 echo "Generating firmware patch..."
 
@@ -29,92 +25,55 @@ if [ ! -d "$FIRMWARE_DIR" ]; then
 fi
 
 cd "$FIRMWARE_DIR"
-echo "Changed to $FIRMWARE_DIR"
 
-# Check if this is a git repository (handles both regular repos and submodules)
+# Check if this is a git repository
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
   echo -e "${RED}Error: vendor/firmware is not a git repository${NC}"
   exit 1
 fi
 
-# Check for uncommitted changes and stash if needed
-STASHED=false
-if ! git diff-index --quiet HEAD --; then
-  echo -e "${YELLOW}Uncommitted changes detected, stashing...${NC}"
-  git stash push -m "Auto-stashed by generate-firmware-patch.sh"
-  STASHED=true
+# Get current branch/tag name to determine patch filename
+BRANCH_OR_TAG=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || git describe --exact-match --tags HEAD 2>/dev/null || echo "")
+if [ -z "$BRANCH_OR_TAG" ] || [ "$BRANCH_OR_TAG" = "HEAD" ]; then
+  # Try to get tag from describe
+  BRANCH_OR_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 fi
 
-# Cleanup function to restore stash if needed
-cleanup() {
-  if [ "$STASHED" = true ]; then
-    echo -e "${YELLOW}Restoring stashed changes...${NC}"
-    git stash pop || true
+# Determine patch filename
+if [ -n "$BRANCH_OR_TAG" ]; then
+  CLEAN_NAME=$(echo "$BRANCH_OR_TAG" | sed 's/^v//')
+  # Check if it's a version tag (e.g., 2.6.13) or a branch name (e.g., develop)
+  if [[ "$CLEAN_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+    PATCH_FILE="$PATCH_DIR/firmware-patch-v${CLEAN_NAME}.diff"
+  else
+    PATCH_FILE="$PATCH_DIR/firmware-patch-${CLEAN_NAME}.diff"
   fi
-}
-
-# Set trap to cleanup on exit
-trap cleanup EXIT
-
-# Ensure we're on the meshenvy/module-registry branch
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "meshenvy/module-registry" ]; then
-  echo "Switching to meshenvy/module-registry branch..."
-  git checkout meshenvy/module-registry || {
-    echo -e "${RED}Error: Failed to checkout meshenvy/module-registry branch${NC}"
-    exit 1
-  }
-fi
-
-# Add upstream remote if it doesn't exist
-if ! git remote | grep -q "^upstream$"; then
-  echo "Adding upstream remote (meshtastic/firmware)..."
-  git remote add upstream https://github.com/meshtastic/firmware.git
 else
-  # Update upstream URL in case it changed
-  git remote set-url upstream https://github.com/meshtastic/firmware.git
+  PATCH_FILE="$PATCH_DIR/firmware-patch.diff"
 fi
 
-# Fetch from upstream
-echo "Fetching from upstream..."
-git fetch upstream
+echo "Branch/tag: ${BRANCH_OR_TAG:-unknown}"
+echo "Patch file: $PATCH_FILE"
 
-# Update local develop branch from upstream/develop
-if git show-ref --verify --quiet refs/heads/develop; then
-  echo "Updating local develop branch from upstream/develop..."
-  git checkout develop
-  git reset --hard upstream/develop
-else
-  echo "Creating local develop branch from upstream/develop..."
-  git checkout -b develop upstream/develop
-fi
+# Reset to clean state (discard any existing patch changes)
+echo "Resetting to clean state..."
+git reset --hard HEAD
+git clean -fd
 
-# Switch back to meshenvy/module-registry
-echo "Switching back to meshenvy/module-registry..."
-git checkout meshenvy/module-registry
+# Apply the patch using mpm init
+echo "Applying patch with mpm init..."
+mpm init
 
-# Merge develop into meshenvy/module-registry
-echo "Merging develop into meshenvy/module-registry..."
-if ! git merge develop --no-edit; then
-  echo -e "${RED}Error: Merge conflicts detected${NC}"
-  echo "Please resolve conflicts manually and then run:"
-  echo "  git diff develop..meshenvy/module-registry > $PATCH_FILE"
-  exit 1
-fi
-
-# Generate the patch
+# Generate the patch from staged and unstaged changes
 echo "Generating patch file..."
-git diff develop..meshenvy/module-registry > "$PATCH_FILE"
+git diff HEAD > "$PATCH_FILE"
 
 if [ $? -eq 0 ]; then
   PATCH_SIZE=$(wc -l < "$PATCH_FILE")
-  echo -e "${GREEN}Successfully generated firmware-patch.diff (${PATCH_SIZE} lines)${NC}"
-  
-  # Restore stashed changes if we stashed them
-  if [ "$STASHED" = true ]; then
-    echo -e "${YELLOW}Restoring stashed changes...${NC}"
-    git stash pop || true
-    STASHED=false  # Clear flag so trap doesn't try again
+  if [ "$PATCH_SIZE" -eq 0 ]; then
+    echo -e "${YELLOW}Warning: Patch file is empty. No changes detected.${NC}"
+  else
+    echo -e "${GREEN}Successfully generated $(basename "$PATCH_FILE") (${PATCH_SIZE} lines)${NC}"
   fi
 else
   echo -e "${RED}Error: Failed to generate patch file${NC}"
