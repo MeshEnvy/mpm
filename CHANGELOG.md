@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2025-12-09
+
 ### Minor
 - Added automatic patch version selection - patcher now finds all versioned patches and selects the latest compatible version (<= firmware version)
 - Added support for branch/tag-specific patches - checks for exact match patch files (e.g., `firmware-patch-develop.diff`) before falling back to version matching
@@ -84,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build utilities for Meshtastic plugins
 - Registry support for plugin discovery
 
-[Unreleased]: https://github.com/MeshEnvy/mpm/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/MeshEnvy/mpm/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/MeshEnvy/mpm/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/MeshEnvy/mpm/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/MeshEnvy/mpm/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/MeshEnvy/mpm/compare/v1.3.0...v1.4.0
