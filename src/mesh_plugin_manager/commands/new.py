@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from jinja2 import Environment, PackageLoader
@@ -81,6 +82,9 @@ def cmd_new(args):
         "plugin_slug_snake_upper": plugin_slug_snake_upper,
         "plugin_name": plugin_name,
         "plugin_name_upper": plugin_name_upper,
+        "current_year": datetime.now().year,
+        "author_name": "MeshEnvy",
+        "release_date": datetime.now().strftime("%Y-%m-%d"),
     }
     
     # Create plugin.h
@@ -102,6 +106,14 @@ def cmd_new(args):
     # Create .gitignore
     gitignore_template = env.get_template(".gitignore.j2")
     (plugin_dir / ".gitignore").write_text(gitignore_template.render(**template_context))
+    
+    # Create LICENSE
+    license_template = env.get_template("LICENSE.j2")
+    (plugin_dir / "LICENSE").write_text(license_template.render(**template_context))
+    
+    # Create CHANGELOG.md
+    changelog_template = env.get_template("CHANGELOG.md.j2")
+    (plugin_dir / "CHANGELOG.md").write_text(changelog_template.render(**template_context))
     
     # Show relative path from cwd for user feedback
     try:
