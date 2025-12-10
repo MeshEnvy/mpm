@@ -31,6 +31,14 @@ mpm install <slug>
 # Install all plugins from meshtastic.json
 mpm install
 
+# Link local plugin directories (for development)
+mpm install --link /path/to/plugin1 /path/to/plugin2
+
+# Note: When using --link, if a plugin's dependencies should also be linked (instead of cloned),
+# they must be specified as paths in the same --link command. Dependencies not specified
+# will be recorded in the lockfile but not installed. To install them, run a normal
+# mpm install command afterward.
+
 # Remove a plugin
 mpm remove <slug>
 

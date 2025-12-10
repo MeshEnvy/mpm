@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -118,6 +119,58 @@ class PluginInstaller:
             return result.stdout.strip()
         except subprocess.CalledProcessError:
             return None
+
+    def link_plugin(self, plugin_slug: str, local_path: str) -> bool:
+        """
+        Link a plugin from a local directory by creating a symlink.
+
+        Args:
+            plugin_slug: Slug of the plugin
+            local_path: Local directory path to link from
+
+        Returns:
+            True if successful, False otherwise
+        """
+        local_path_obj = Path(local_path)
+        
+        # Validate local path exists and is a directory
+        if not local_path_obj.exists():
+            print(f"Error: Path does not exist: {local_path}", file=sys.stderr)
+            return False
+        
+        if not local_path_obj.is_dir():
+            print(f"Error: Path is not a directory: {local_path}", file=sys.stderr)
+            return False
+        
+        # Validate src directory exists
+        src_dir = local_path_obj / "src"
+        if not src_dir.exists() or not src_dir.is_dir():
+            print(f"Error: Plugin directory must contain a 'src' directory: {local_path}", file=sys.stderr)
+            return False
+        
+        plugin_dir = self.plugins_dir / plugin_slug
+        
+        # Remove existing installation if present
+        if plugin_dir.exists():
+            if plugin_dir.is_symlink():
+                plugin_dir.unlink()
+            else:
+                shutil.rmtree(plugin_dir)
+        
+        # Create plugins directory if needed
+        self.plugins_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            # Convert to absolute path for symlink
+            absolute_local_path = local_path_obj.resolve()
+            
+            # Create symlink
+            plugin_dir.symlink_to(absolute_local_path)
+            
+            return True
+        except OSError as e:
+            print(f"Error creating symlink for {plugin_slug}: {e}", file=sys.stderr)
+            return False
 
     def is_plugin_installed(self, plugin_slug: str) -> bool:
         """

@@ -1,6 +1,7 @@
 """Install command for mpm."""
 
 import sys
+from pathlib import Path
 
 from mesh_plugin_manager.build_utils import find_project_dir
 from mesh_plugin_manager.installer import PluginInstaller
@@ -17,6 +18,11 @@ def register(subparsers):
         nargs="*",
         help="Plugin slugs to install (if not specified, installs all from meshtastic.json)",
     )
+    parser.add_argument(
+        "--link",
+        action="store_true",
+        help="Interpret plugin arguments as local paths and symlink instead of cloning from git",
+    )
     return cmd_install
 
 
@@ -24,8 +30,82 @@ def cmd_install(args):
     """Install plugins."""
     project_dir = find_project_dir()
     manifest = ManifestManager(project_dir)
-    registry_client = RegistryClient()
     installer = PluginInstaller(project_dir)
+
+    # Handle --link flag
+    if args.link:
+        if not args.plugins:
+            print("Error: Must specify at least one plugin path when using --link", file=sys.stderr)
+            sys.exit(1)
+        
+        # Build map of slug -> path from command line arguments
+        slug_to_path: dict[str, str] = {}
+        for plugin_path_str in args.plugins:
+            local_path = Path(plugin_path_str)
+            if not local_path.exists():
+                print(f"Error: Path does not exist: {plugin_path_str}", file=sys.stderr)
+                sys.exit(1)
+            plugin_slug = local_path.name
+            slug_to_path[plugin_slug] = str(local_path.resolve())
+        
+        print("Linking plugins...")
+        failed = []
+        processed_slugs: set[str] = set()
+        
+        def link_plugin_recursive(plugin_slug: str, local_path: str) -> bool:
+            """Recursively link a plugin and its dependencies if they're also being linked."""
+            if plugin_slug in processed_slugs:
+                return True
+            
+            print(f"Linking {plugin_slug} from {local_path}...")
+            
+            if not installer.link_plugin(plugin_slug, local_path):
+                print(f"  ✗ Failed to link {plugin_slug}", file=sys.stderr)
+                return False
+            
+            processed_slugs.add(plugin_slug)
+            
+            # Get dependencies from plugin manifest
+            plugin_manifest = manifest.get_plugin_manifest(plugin_slug)
+            dependencies = {}
+            if plugin_manifest:
+                dependencies = plugin_manifest.get("dependencies", {})
+            
+            # Process dependencies - if they're also being linked, link them recursively
+            for dep_slug, dep_spec in dependencies.items():
+                if dep_slug in slug_to_path and dep_slug not in processed_slugs:
+                    # This dependency is also being linked, so link it
+                    dep_path = slug_to_path[dep_slug]
+                    if not link_plugin_recursive(dep_slug, dep_path):
+                        return False
+            
+            # Update lockfile with linked plugin entry
+            manifest.update_lockfile_linked_plugin(plugin_slug, local_path, dependencies)
+            
+            # Add to root manifest if it's a top-level plugin
+            if plugin_slug in slug_to_path:
+                manifest.add_dependency(plugin_slug, "linked")
+            
+            print(f"  ✓ Linked {plugin_slug}")
+            return True
+        
+        # Link all plugins specified on command line
+        for plugin_path_str in args.plugins:
+            local_path = Path(plugin_path_str)
+            plugin_slug = local_path.name
+            
+            if not link_plugin_recursive(plugin_slug, str(local_path.resolve())):
+                failed.append(plugin_path_str)
+        
+        if failed:
+            print(f"\nFailed to link {len(failed)} plugin(s)", file=sys.stderr)
+            sys.exit(1)
+        
+        print("\nLinking complete!")
+        return
+
+    # Normal installation flow
+    registry_client = RegistryClient()
 
     # Fetch registry
     print("Fetching registry...")

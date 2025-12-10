@@ -151,6 +151,32 @@ class ManifestManager:
 
         self.write_lockfile(lockfile)
 
+    def update_lockfile_linked_plugin(
+        self,
+        plugin_slug: str,
+        local_path: str,
+        dependencies: Dict[str, str],
+    ) -> None:
+        """
+        Update a linked plugin entry in the lockfile.
+
+        Args:
+            plugin_slug: Slug of the plugin
+            local_path: Local path that was linked
+            dependencies: Dict of dependency slugs to version specs
+        """
+        lockfile = self.read_lockfile()
+        if "plugins" not in lockfile:
+            lockfile["plugins"] = {}
+
+        lockfile["plugins"][plugin_slug] = {
+            "linked": True,
+            "path": str(Path(local_path).resolve()),
+            "dependencies": dependencies,
+        }
+
+        self.write_lockfile(lockfile)
+
     def remove_lockfile_plugin(self, plugin_slug: str) -> bool:
         """
         Remove a plugin from the lockfile.

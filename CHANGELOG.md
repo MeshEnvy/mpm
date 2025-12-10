@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Minor
+- Added `--link` flag to `install` command for symlinking local plugin directories
 - Added LICENSE to template
 - Added CHANGELOG to template
 
