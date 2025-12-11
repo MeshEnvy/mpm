@@ -99,6 +99,10 @@ def cmd_new(args):
     module_cpp_template = env.get_template("Module.cpp.j2")
     (src_dir / f"{plugin_name}Module.cpp").write_text(module_cpp_template.render(**template_context))
     
+    # Create diagnostics.cpp
+    diagnostics_cpp_template = env.get_template("diagnostics.cpp.j2")
+    (src_dir / "diagnostics.cpp").write_text(diagnostics_cpp_template.render(**template_context))
+    
     # Create README.md
     readme_template = env.get_template("README.md.j2")
     (plugin_dir / "README.md").write_text(readme_template.render(**template_context))

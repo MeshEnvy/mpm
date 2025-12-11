@@ -1,0 +1,8 @@
+#include "DebugConfiguration.h"
+
+void {{ plugin_slug_cpp }}_diagnostics()
+{
+    LOG_DEBUG("{{ plugin_name }} Diagnostics:");
+    LOG_DEBUG("  Plugin version: {{ plugin_slug_snake_upper }}_VERSION");
+    // TODO: Add diagnostic logging for {{ plugin_name }}
+}

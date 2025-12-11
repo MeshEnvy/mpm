@@ -3,7 +3,10 @@
 
 {{ plugin_name }}Module::{{ plugin_name }}Module() : SinglePortModule("{{ plugin_slug }}", meshtastic_PortNum_TEXT_MESSAGE_APP)
 {
-    // TODO: Initialize module
+#ifdef {{ plugin_slug_snake_upper }}_PLUGIN_DIAGNOSTICS
+    extern void {{ plugin_slug_cpp }}_diagnostics();
+    {{ plugin_slug_cpp }}_diagnostics();
+#endif
 }
 
 ProcessMessage {{ plugin_name }}Module::handleReceived(const meshtastic_MeshPacket &mp)
